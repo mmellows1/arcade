@@ -15,7 +15,8 @@ $(document).ready(function(event) {
 	        Mouse = Matter.Mouse,
 	        World = Matter.World,
 	        Bodies = Matter.Bodies,
-	        Events = Matter.Events;
+	        Events = Matter.Events,
+	        Pairs = Matter.Pairs;
 
 	    // create engine
 	    var engine = Engine.create(),
@@ -34,8 +35,6 @@ $(document).ready(function(event) {
 	        }
 	    });
 
-	    console.log(render);
-
 	    Render.run(render);
 
 	    var options = {
@@ -46,14 +45,17 @@ $(document).ready(function(event) {
 	    		}
 	    	},
 	    	building: {
+	    		density: 4,
+	    		friction: 12,
 	    		render: {
 	    			fillStyle: '#95a5a6'
 	    		}
 	    	},
 	    	buildingGuide: {
 	    		isStatic: true,
+	    		isSensor: true,
 	    		render: {
-	    			fillStyle: '#34495e',
+	    			fillStyle: 'transparent',
 	    			strokeStyle: 'lime',
 	    			lineWidth: 1
 	    		}
@@ -65,58 +67,24 @@ $(document).ready(function(event) {
 	    		}
 	    	},
 	    	string: {
+	    		isStatic: true,
 	    		render: {
 	    			fillStyle: '#f39c12'
 	    		}
 	    	},
 	    	hook: {
-	    		density:2,
 	    		render: {
 	    			fillStyle: 'yellow'
 	    		}
 	    	}
 	    }
 
-	    // The Ground
-	    // var ground = Bodies.rectangle(200, 500, 300, 300, options.ground)
-	   	// World.add(world, ground);
-
-	   	// The Building
-	   	// var building = Composites.stack(50, 320, 4, 2, 0, 0, function(x, y) {
-	   	// 	return Bodies.rectangle(x, y, 30, 20, options.building)
-	   	// })
-
-	   	// The String from the Crane
-	   	// var string = Composites.stack(88, 90, 1, 30, 40, 0, function(x, y) {
-	   	// 	return Bodies.circle(x, y, 2, options.string)
-	   	// })
-	   	// Composites.chain(string, 0, 0, 0, 0);
-
-	   	// var hook = Bodies.rectangle(90, 220, 30, 10, options.hook)
-
-	   	// var attach = Constraint.create({
-	   	// 	bodyA: hook,
-	   	// 	bodyB: string.bodies[string.bodies.length - 1]
-	   	// })
-
-
-	   	// World.add(world, [string, hook, attach, building]);
-
-	   	// The Crane
-	   	// var crane = [
-	   	// 	Bodies.rectangle(275, 325, 50, 50, options.crane),
-	   	// 	Bodies.rectangle(275, 175, 25, 250, options.crane),
-	   	// 	Bodies.rectangle(275, 75, 50, 50, options.crane),
-	   	// 	Bodies.rectangle(200, 75, 225, 25, options.crane),
-	   	// 	Bodies.rectangle(90, 75, 12, 35, options.crane),
-	   	// ]
-	   	// World.add(world, crane);
-
 	   	var ground = Composite.create({
 	   		bodies: [
 	   			Bodies.rectangle(150, 750, 250, 400, options.ground)
 	   		]
 	   	}, true);
+
 	   	var crane = Composite.create({
 	   		bodies: [
 	   			Bodies.rectangle(340, 600, 75, 75, options.crane),
@@ -124,46 +92,74 @@ $(document).ready(function(event) {
 	   			Bodies.rectangle(340, 300, 75, 75, options.crane),
 	   			Bodies.rectangle(200, 300, 350, 25, options.crane),
 	   			Bodies.rectangle(53, 300, 25, 50, options.crane),
-	   		]
+	   			Bodies.rectangle(52.5, 375, 10, 100, options.string)
+	   		],
+	   		label: 'Crane'
 	   	}, true);
+
+	   	crane.bodies[crane.bodies.length - 1].label = "String";
+
 	   	var building = Composites.stack(50, 500, 4, 2, 0, 0, function(x, y) {
-	   		return Bodies.rectangle(x, y, 30, 25, options.building);
+	   		var BuildingBlock = Bodies.rectangle(x, y, 30, 25, options.building);
+	   			BuildingBlock.label = 'BuildingBlock';
+	   		return BuildingBlock;
 	   	});
+
+	   	for(var i = 0; i < building.bodies.length; i++) {
+	   		 console.log(building.bodies[i].label);
+	   	}
+
 	   	var buildingGuide = Composites.stack(200, 450, 1, 4, 0, 0, function(x, y) {
 	   		return Bodies.rectangle(x, y, 30, 25, options.buildingGuide);
 	   	})
-	   	var string = Composites.stack(50, 330, 1, 25, 0, 0, function(x, y) {
-	   		return Bodies.circle(x, y, 3, options.string);
-	   	});
-	   	Composites.chain(string, 0, 0, 0, 0);
-	   	var attachment = Constraint.create({
-	   		bodyA:crane.bodies[4],
-	   		bodyB:string.bodies[0]
-	   	})
-	   	// var hook;
 
-	   	World.add(world, [ground, crane, building, buildingGuide, string, attachment/* hook */]);
+	   	buildingGuide.label = 'BuildingGuide';
 
+	   	World.add(world, [ground, crane, building, buildingGuide]);
 
 	    // create runner
 	    var runner = Runner.create();
 	    Runner.run(runner, engine);
 
-	    var mouse = Mouse.create(render.canvas),
-        mouseConstraint = MouseConstraint.create(engine, {
-            mouse: mouse,
-            constraint: {
-                stiffness: 0.2,
-                render: {
-                    visible: false
-                }
-            }
-        });
+	    var buildingToCrane = Composite.create();
 
+
+	    // This function attaches the building blocks to the cranes string
+    	Events.on(engine, 'collisionStart', function(event) {
+	        var pairs = event.pairs;
+
+	        // change object colours to show those starting a collision
+	        for (var i = 0; i < pairs.length; i++) {
+	            var pair = pairs[i];
+	            console.log(pair);
+	            if(pair.bodyB.label == 'BuildingBlock' && pair.bodyA.label == 'String') {
+	            	pair.bodyA.render.fillStyle = 'red';
+	            	pair.bodyB.render.fillStyle = 'green';
+	            	buildingToCrane.constraints = [
+		            		Constraint.create({
+		            		bodyA: pair.bodyA,
+		            		bodyB: pair.bodyB,
+		            		pointA: {x: 0, y:45},
+		            		label: 'BuildingBlockToCrane'
+		            	}) 
+	            	]
+	            	World.add(world, buildingToCrane);
+	            }
+	        }
+	    });
+
+	    // This function detaches the building blocks from the cranes string
+	    var Detach = function() {
+	    	console.log('Detaching');
+	    	// Composite.allConstraints(buildingToCrane);
+	    	console.log(Composite.allConstraints(buildingToCrane));
+	    	World.clear(buildingToCrane);
+	    }
+
+        // This function fixes the animation to be smoother
         var Controller = function(body, timing, interval, translate) {
         	var count = 1;
 			var myVar = setInterval(function(){ 
-				console.log(body, timing, translate, count);
 				count++;
 				if(count >= timing) {
 					clearInterval(myVar);
@@ -174,34 +170,70 @@ $(document).ready(function(event) {
         }
 
 		var count = 1;
-		$("body").bind( "keypress keydown", function( event ) {
-			if(event.which == '37') {
-				// Left click
+		$(document).bind('keydown keyup', function( event ) {
+			var intervals = 12;
+			var speed = 0.05;
+
+			// Left click
+			if(event.which == 37) {
 				event.preventDefault();
-				Controller(crane.bodies[4], 25, 1, {x: -0.5, y: 0});
+				Controller(crane.bodies[5], intervals, speed, {x: -0.5, y: 0});
+				Controller(crane.bodies[4], intervals, speed, {x: -0.5, y: 0});
 			}
-			if(event.which == '39') {
-				// Right key
+
+			// Right key
+			if(event.which == 39) {
 				event.preventDefault();
-				Controller(crane.bodies[4], 25, 1, {x: 0.5, y: 0});
+				Controller(crane.bodies[5], intervals, speed, {x: 0.5, y: 0});
+				Controller(crane.bodies[4], intervals, speed, {x: 0.5, y: 0});
 			}
-			if(event.which == '38') {
-				// Up key
+
+			// Up key
+			if(event.which == 38) {
 				event.preventDefault();
-				Controller(crane.bodies[4], 25, 1, {x: 0, y: -0.5});
-				Controller(crane.bodies[3], 25, 1, {x: 0, y: -0.5});
-				Controller(crane.bodies[2], 25, 1, {x: 0, y: -0.5});
+				Controller(crane.bodies[5], intervals, speed, {x: 0, y: -0.5});
+				Controller(crane.bodies[4], intervals, speed, {x: 0, y: -0.5});
+				Controller(crane.bodies[3], intervals, speed, {x: 0, y: -0.5});
+				Controller(crane.bodies[2], intervals, speed, {x: 0, y: -0.5});
 			}
-			if(event.which == '40') {
-				// Down key
+
+			// Down key
+			if(event.which == 40) {
 				event.preventDefault();
-				Controller(crane.bodies[4], 25, 1, {x: 0, y: 0.5});
-				Controller(crane.bodies[3], 25, 1, {x: 0, y: 0.5});
-				Controller(crane.bodies[2], 25, 1, {x: 0, y: 0.5});
+				Controller(crane.bodies[5], intervals, speed, {x: 0, y: 0.5});
+				Controller(crane.bodies[4], intervals, speed, {x: 0, y: 0.5});
+				Controller(crane.bodies[3], intervals, speed, {x: 0, y: 0.5});
+				Controller(crane.bodies[2], intervals, speed, {x: 0, y: 0.5});
 			}
+
+			// Pick up button (space)
+			if(event.which == 32) {
+				Attach();
+			}
+
+			// Drop button (d)
+    		if(event.which == 68) {	
+    			Detach();
+    		}
 		});
 
-    	World.add(world, mouseConstraint);
+		// This needs to be seperated from the triggers above because the keypress is not
+		// read properly...
+		// var count = 0;
+		// $(document).keypress(function(event) {
+		// 	if(count == 0) {
+		// 		count++;
+		// 		if(event.which == '32') {
+		// 			event.preventDefault();
+		// 		}
+		// 	}
+		// 	else if(count > 0) {
+		// 		count--;
+		// 		if(event.which == '32') {
+		// 			event.preventDefault();
+		// 		}
+		// 	}
+		// })
 
 	    // context for MatterTools.Demo
 	    return {
@@ -217,3 +249,4 @@ $(document).ready(function(event) {
 	};
 	Example.bridge();
 })
+
