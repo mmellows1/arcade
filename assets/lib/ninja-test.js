@@ -62,10 +62,22 @@ $(document).ready(function(event) {
 
 	    Render.run(render);
 
+	    // create runner
+	    var runner = Runner.create();
+	    Runner.run(runner, engine);
+
 	    // =====================================
 	    // Body/Composite/Constraints options
 	    // =====================================
 	    var options = {
+	    	box: {
+	    		isStatic: true,
+	    		render: {
+	    			fillStyle: 'transparent',
+	    			lineWidth: 1,
+	    			strokeStyle: '#95a5a6'
+	    		}
+	    	},
 	    	correct: {
 	    		isStatic: false,
 	    		render: {
@@ -75,24 +87,55 @@ $(document).ready(function(event) {
 	    }
 
 	    // =====================================
+	    // Mouse Controller
+	    // =====================================
+		var mouse = Mouse.create(render.canvas),
+        	mouseConstraint = MouseConstraint.create(engine, {
+	            mouse: mouse,
+	            constraint: {
+	                stiffness: 0.2,
+	                render: {
+	                    visible: true
+	                }
+	            }
+        });
+
+    	World.add(world, mouseConstraint);
+
+	    // =====================================
 	    // Bodies
 	    // =====================================
-	    var correct = Composites.stack(50, 50, 5, 8, 10, 10, function(x, y) {
-	    	var CorrectBox = Bodies.rectangle(x, y, 50, 50, options.correct);
-	   			CorrectBox.label = 'CorrectBox';
-	   		return CorrectBox;
+	    var box = Composites.stack(50, 50, 5, 8, 10, 10, function(x, y) {
+	    	var Box = Bodies.rectangle(x, y, 50, 50, options.box);
+	   			Box.label = 'Box';
+	   		return Box;
 	    })
 
-	    World.add(world, correct);
+	    World.add(world, box);
 	    
+	    Events.on(mouseConstraint, "mousedown", function(event) {
+	    	console.log(event);
+	    })
+
 	    // =====================================
 	    // Functions
 	    // =====================================
-	    var ShowBox = function(id) {
+
+	    var RandomBox = function() {
+	    	var all = Composite.allBodies(box);
+	    	var randBox = all[Math.floor(Math.random() * ((all.length - 1) - 0 + 1) + 0)];
+	    		$.extend(true, randBox, options.correct);
+	    		setTimeout(function(){ 
+	    			$.extend(true, randBox, options.box);
+	    			RandomBox();
+	    		}, 3000);
+	    }
+
+	    var ChangeBox = function(body) {
 
 	    };
 
-	    var HideBox = function(id) {
+	    var HideBox = function(body) {
 
 	    };
 
@@ -100,9 +143,23 @@ $(document).ready(function(event) {
 
 	    };
 
-	    var Init = function() {
+	    $('#start-game').click(function(event) {
+	    	RandomBox();
+	    	$(this).attr('disabled', true);
+	    })
 
+
+	    return {
+	        engine: engine,
+	        runner: runner,
+	        render: render,
+	        canvas: render.canvas,
+	        stop: function() {
+	            Matter.Render.stop(render);
+	            Matter.Runner.stop(runner);
+	        }
 	    };
 	}
+
 	Example.ninja();
 })
