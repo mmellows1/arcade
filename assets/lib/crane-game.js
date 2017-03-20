@@ -46,7 +46,7 @@ $(document).ready(function(event) {
 	    	},
 	    	building: {
 	    		density: 4,
-	    		friction: 12,
+	    		friction: 100,
 	    		render: {
 	    			fillStyle: '#95a5a6'
 	    		}
@@ -109,7 +109,7 @@ $(document).ready(function(event) {
 	   		 console.log(building.bodies[i].label);
 	   	}
 
-	   	var buildingGuide = Composites.stack(200, 450, 1, 4, 0, 0, function(x, y) {
+	   	var buildingGuide = Composites.stack(200, 350, 1, 8, 0, 0, function(x, y) {
 	   		return Bodies.rectangle(x, y, 30, 25, options.buildingGuide);
 	   	})
 
@@ -172,7 +172,7 @@ $(document).ready(function(event) {
 		var count = 1;
 		$(document).bind('keydown keyup', function( event ) {
 			var intervals = 12;
-			var speed = 0.05;
+			var speed = 1;
 
 			// Left click
 			if(event.which == 37) {
